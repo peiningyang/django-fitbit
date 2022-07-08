@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ImproperlyConfigured
-from django.urls import reverse
+from django.core.urlresolvers import reverse
 from django.dispatch import receiver
 from django.http import HttpResponse, HttpResponseServerError, Http404
 from django.shortcuts import redirect, render
@@ -22,17 +22,6 @@ from . import forms
 from . import utils
 from .models import UserFitbit, TimeSeriesData, TimeSeriesDataType
 from .tasks import get_time_series_data, subscribe, unsubscribe
-
-
-# Create your views here.
-def home_view(request, *args, **kwargs):
-    """Homepage."""
-    return HttpResponse("<h1>Hello World</h1>")
-
-
-def auth_view(request, *args, **kwargs):
-    """Authorization."""
-    return HttpResponse("")
 
 
 @login_required
@@ -128,10 +117,13 @@ def complete(request):
         # If FITAPP_SUBSCRIPTIONS is specified, narrow the list of data types
         # to retrieve
         if subs is not None:
-            cats = list([getattr(TimeSeriesDataType, k) for k in list(subs.keys())])
+            cats = list(map(
+                lambda k: getattr(TimeSeriesDataType, k),
+                subs.keys()
+            ))
             tsdts = tsdts.filter(category__in=cats)
             # Combine all the resource sublists from FITAPP_SUBSCRIPTIONS
-            res = [res for _, sublist in list(subs.items()) for res in sublist]
+            res = [res for _, sublist in subs.items() for res in sublist]
             tsdts = tsdts.filter(resource__in=res)
             # Sort as specified in FITAPP_SUBSCRIPTIONS
             tsdts = sorted(tsdts, key=lambda tsdt: (
@@ -267,11 +259,11 @@ def update(request):
                 if subs is not None and c_type not in subs:
                     continue
                 cat = getattr(TimeSeriesDataType, c_type)
-                tsdts = [tsdt for tsdt in all_tsdts if tsdt.category == cat]
+                tsdts = filter(lambda tsdt: tsdt.category == cat, all_tsdts)
                 if subs is not None:
                     res_list = subs[c_type]
                     tsdts = sorted(
-                        [tsdt for tsdt in tsdts if tsdt.resource in res_list],
+                        filter(lambda tsdt: tsdt.resource in res_list, tsdts),
                         key=lambda tsdt: res_list.index(tsdt.resource)
                     )
                 for i, _type in enumerate(tsdts):
@@ -315,13 +307,13 @@ def normalize_date_range(request, fitbit_data):
     base_date = fitbit_data['base_date']
     if base_date == 'today':
         now = timezone.now()
-        if 'fitbit_profile' in list(request.session.keys()):
+        if 'fitbit_profile' in request.session.keys():
             tz = request.session['fitbit_profile']['user']['timezone']
             now = timezone.pytz.timezone(tz).normalize(timezone.now())
         base_date = now.date().strftime('%Y-%m-%d')
     result['date__gte'] = base_date
 
-    if 'end_date' in list(fitbit_data.keys()):
+    if 'end_date' in fitbit_data.keys():
         result['date__lte'] = fitbit_data['end_date']
     else:
         period = fitbit_data['period']

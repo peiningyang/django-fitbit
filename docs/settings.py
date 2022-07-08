@@ -2,6 +2,8 @@
 # import source code dir
 import os
 import sys
+
+from fitapp.defaults import FITAPP_LOGIN_REDIRECT
 sys.path.insert(0, os.getcwd())
 sys.path.insert(0, os.path.join(os.getcwd(), os.pardir))
 
@@ -25,4 +27,8 @@ INSTALLED_APPS = (
     'fitapp',
 )
 
-SECRET_KEY = 'DOCS_KEY'
+SECRET_KEY = 'DOCS_KEY' 
+
+FITBIT_CONSUMER_KEY = '238LGW'
+FITBIT_CONSUMER_SECRET = '35b31c3c251e34485031b00ee21ed3d1'
+FITAPP_LOGIN_REDIRECT = 'https://data-automation-tester-app.azurewebsites.net/'
